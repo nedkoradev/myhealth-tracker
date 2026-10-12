@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Each authenticated user owns only documents below their UID.
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      match /profiles/{profileId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        match /{document=**} {
+          allow read, write: if request.auth != null && request.auth.uid == userId;
+        }
+      }
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
