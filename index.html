@@ -33,6 +33,7 @@ if(false){
 const demoBounds={'TSH':[0.35,4.94],'FT4':[12,22],'Общ холестерол':[0,5.2],'LDL':[0,3],'HDL':[1,2.5],'Триглицериди':[0,1.7],'Глюкоза':[3.9,5.6],'HbA1c':[4,5.7],'PSA':[0,4],'Хемоглобин':[135,175],'CRP':[0,5]};
 for(const [name,range] of Object.entries(demoBounds)){refs[name+'|'+dates[0]]={lo:range[0],hi:range[1]}}
 }
+const exportBtn=document.createElement('button');exportBtn.type='button';exportBtn.textContent='Експорт на данните (JSON)';exportBtn.onclick=()=>{const data={format:'myhealth-tracker-private-import-v1',dates,custom:labs.map(r=>r.slice(0,3)),values:labs.map(r=>r[3]),refs,labNames};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='myhealth-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};document.getElementById('importPrivate').insertAdjacentElement('afterend',exportBtn);
 document.getElementById('importPrivate').onclick=()=>document.getElementById('privateInput').click();
 document.getElementById('privateInput').onchange=async e=>{
  const file=e.target.files?.[0];if(!file)return;
