@@ -1,15 +1,53 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Each authenticated user owns only documents below their UID.
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      match /profiles/{profileId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-        match /{document=**} {
-          allow read, write: if request.auth != null && request.auth.uid == userId;
-        }
+    function signedIn() { return request.auth != null; }
+    function isMember(profileId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/profiles/$(profileId))
+        && request.auth.uid in get(/databases/$(database)/documents/profiles/$(profileId)).data.members;
+    }
+    function isOwner(profileId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/profiles/$(profileId))
+        && get(/databases/$(database)/documents/profiles/$(profileId)).data.ownerUid == request.auth.uid;
+    }
+
+    match /profiles/{profileId} {
+      // Shared health profile: members is a map keyed by Firebase Auth UID.
+      // Owner invites users; all listed members may edit and delete medical data.
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['name', 'ownerUid', 'members', 'createdAt', 'updatedAt'])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.members is map
+        && request.resource.data.members.keys().hasOnly([request.auth.uid])
+        && request.resource.data.members[request.auth.uid] == 'owner';
+      allow read: if signedIn() && request.auth.uid in resource.data.members;
+      allow update: if signedIn()
+        && request.auth.uid in resource.data.members
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.members[resource.data.ownerUid] == 'owner'
+        && (
+          // Owner alone can change sharing permissions.
+          (request.auth.uid == resource.data.ownerUid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'members', 'updatedAt']))
+          ||
+          // Other members can edit profile name but cannot change membership.
+          (request.resource.data.members == resource.data.members
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'updatedAt']))
+        );
+      // Deleting an entire profile is restricted to the owner as a safeguard.
+      // Both members can delete individual health records.
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+
+      match /records/{recordId} {
+        allow read, create, update, delete: if isMember(profileId);
       }
+    }
+
+    match /users/{uid} {
+      allow read, create, update, delete: if signedIn()
+        && request.auth.uid == uid;
     }
     match /{document=**} {
       allow read, write: if false;
