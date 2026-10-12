@@ -144,7 +144,7 @@ document.getElementById('privateInput').onchange=async e=>{
  try{
   const data=JSON.parse(await file.text());
   if(data.format!=='myhealth-tracker-private-import-v1'||!Array.isArray(data.dates)||!Array.isArray(data.custom)||!Array.isArray(data.values)||data.custom.length!==data.values.length||data.dates.some(d=>!/^\d{4}-\d{2}-\d{2}$/.test(d))||data.custom.some(r=>!Array.isArray(r)||r.length!==3)||data.values.some(row=>!Array.isArray(row)||row.length!==data.dates.length))throw Error('Невалиден формат на файла.');
-  if(!confirm('Това ще замени текущото активно досие. Преди това направи експорт на резервно копие. Продължи?'))return;
+  if(!confirm('Това ще замени текущото активно досие. Преди това направи експорт на резервно копие. Продължи?'))return;const existingSnapshot=localStorage.getItem(activeDossierKey);if(existingSnapshot){const backupKey=activeDossierKey+'_backup_before_import_'+Date.now();localStorage.setItem(backupKey,existingSnapshot)}
   dates=data.dates;
   const incoming=data.custom.map(r=>r.slice()),newRefs={...(data.refs||{})},taken=new Set();
   for(const r of incoming){const original=r[1],concept=resolveConcept(r[1],r[2]);if(!concept||taken.has(concept.name)){taken.add(original);continue}
