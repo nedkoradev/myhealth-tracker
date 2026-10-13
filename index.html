@@ -143,6 +143,7 @@ const canonicalConcepts=[
 ['Електролити','Калций','mmol/L',['калций','calcium']],
 ['Електролити','Фосфор','mmol/L',['фосфор','phosphorus','неорганичен фосфор/inorganic']]
 ];
+try{const extras=JSON.parse(localStorage.getItem('mht_custom_concepts_v1')||'[]');if(Array.isArray(extras))for(const c of extras){if(Array.isArray(c)&&c.length===4&&c.slice(0,3).every(x=>typeof x==='string')&&Array.isArray(c[3])&&!canonicalConcepts.some(x=>x[1]===c[1]&&x[2]===c[2]))canonicalConcepts.push(c)}}catch(e){}
 const catalog=canonicalConcepts.map(r=>r.slice(0,3));
 const normalizedName=n=>String(n||'').normalize('NFKC').toLocaleLowerCase('bg').replace(/[‐‑–—]/g,'-').replace(/\s+/g,' ').trim();
 const normalizedUnit=u=>String(u||'').toLowerCase().replace(/[µμ]/g,'u').replace(/\s+/g,'').replace(/\^/g,'').replace(/литър/g,'l').replace(/^x?10e?9\/l$/,'10⁹/l').replace(/^x?109\/l$/,'10⁹/l').replace(/^x?10e?12\/l$/,'10¹²/l').replace(/^x?1012\/l$/,'10¹²/l');
@@ -225,7 +226,7 @@ function wizardCommit(){
  const w=wizardState,d=w.data,groups=new Map(),conflicts=[],nextRefs={},originals=[];
  const filled=v=>v!==null&&v!==undefined&&v!=='';
  d.custom.forEach((r,i)=>{
-  const choice=w.choices[i],c=choice.mode==='map'?canonicalConcepts[choice.target]:null;
+  const choice=w.choices[i],c=choice.mode==='map'?canonicalConcepts[choice.target]:choice.mode==='new'?[choice.newCategory,choice.newName,choice.newUnit,[r[1]]]:null;
   const name=c?c[1]:r[1],unit=c?c[2]:r[2],category=c?c[0]:r[0],id=name+'|'+normalizedUnit(unit);
   if(!groups.has(id))groups.set(id,{category,name,unit,values:Array(d.dates.length).fill(null)});
   const g=groups.get(id);
@@ -252,6 +253,7 @@ function wizardCommit(){
   dates=order.map(o=>o.date);labNames=d.labNames||{};labs.splice(0,labs.length,...nextLabs);
   custom=nextLabs.map(r=>r.slice(0,3));refs=nextRefs;qualitative=q;selected=[];visibleGraphs.clear();
   persist();
+  const additions=w.choices.filter(x=>x.mode==='new').map(x=>[x.newCategory,x.newName,x.newUnit,[x.sourceName]]);if(additions.length){const prior=JSON.parse(localStorage.getItem('mht_custom_concepts_v1')||'[]');const merged=[...prior];for(const c of additions)if(!merged.some(x=>normalizedName(x[1])===normalizedName(c[1])&&normalizedUnit(x[2])===normalizedUnit(c[2])))merged.push(c);localStorage.setItem('mht_custom_concepts_v1',JSON.stringify(merged));for(const c of additions)if(!canonicalConcepts.some(x=>normalizedName(x[1])===normalizedName(c[1])&&normalizedUnit(x[2])===normalizedUnit(c[2])))canonicalConcepts.push(c)}
   localStorage.setItem(activeDossierKey+'_original_name_mapping',JSON.stringify(originals));
   updateCategories();header();render();renderGraphs();closeEditor();
   wizardState=null;document.getElementById('catalogWizard').classList.add('hidden');
