@@ -321,22 +321,29 @@ document.getElementById('unmatchedApply').onclick=()=>{
 function wizardRender(){
  const w=wizardState;if(!w)return;
  const r=w.data.custom[w.index],values=w.data.values[w.index],choice=w.choices[w.index];
- const proposal=resolveConcept(r[1],r[2]);
- document.getElementById('wizardCount').textContent='Показател '+(w.index+1)+' от '+w.data.custom.length+' — промени не се записват до окончателното потвърждение.';
- const options=canonicalConcepts.map((c,i)=>'<option value="'+i+'" '+(i===choice.target?'selected':'')+'>'+safeText(c[1])+' ('+safeText(c[2])+')</option>').join('');
+ const options='<option value="">— Избери показател от каталога —</option>'+canonicalConcepts.map((c,i)=>'<option value="'+i+'">'+safeText(c[1])+' ('+safeText(c[2])+')</option>').join('');
  const records=w.data.dates.map((d,i)=>({d,v:values[i],ref:w.data.refs?.[r[1]+'|'+d]})).filter(x=>x.v!==null&&x.v!==undefined&&x.v!=='');
- document.getElementById('wizardBody').innerHTML='<p><b>Име от изследването:</b> '+safeText(r[1])+' · <b>Единица:</b> '+safeText(r[2]||'непосочена')+'</p><p><b>Предложение:</b> '+safeText(proposal?.name||'Няма сигурно съответствие')+'</p><div class="wizard-table-scroll"><table class="wizard-table"><tr><th>Дата</th><th>Стойност</th><th>Референция от изследването</th></tr>'+records.map(x=>'<tr><td>'+safeText(x.d)+'</td><td>'+safeText(x.v)+'</td><td>'+safeText(x.ref?(x.ref.lo??'—')+' – '+(x.ref.hi??'—'):'Няма данни')+'</td></tr>').join('')+'</table></div><p class="muted">Каталогът няма универсални референтни граници. Оригиналните се запазват за всяка дата.</p><label>Действие <select id="wizardMode"><option value="map">Съпостави</option><option value="keep">Остави несъпоставен</option></select></label><label> Име от каталога <select id="wizardTarget">'+options+'</select></label><p id="wizardWarning" style="color:#a65b00"></p>';
+ document.getElementById('wizardCount').textContent='За решение '+(w.pending.indexOf(w.index)+1)+' от '+w.pending.length+' · '+(w.data.custom.length-w.pending.length)+' разпознати автоматично. Записът става само след финално потвърждение.';
+ document.getElementById('wizardBody').innerHTML='<p><b>Име от изследването:</b> '+safeText(r[1])+' · <b>Единица:</b> '+safeText(r[2]||'непосочена')+'</p><div class="wizard-table-scroll"><table class="wizard-table"><tr><th>Дата</th><th>Стойност</th><th>Лабораторна референция</th></tr>'+records.map(x=>'<tr><td>'+safeText(x.d)+'</td><td>'+safeText(x.v)+'</td><td>'+safeText(x.ref?(x.ref.lo??'—')+' – '+(x.ref.hi??'—'):'Няма данни')+'</td></tr>').join('')+'</table></div><p>Действие <select id="wizardMode"><option value="keep">Пропусни засега (запази оригиналното име)</option><option value="map">Съпостави с каталога</option><option value="new">Добави нов показател в каталога</option></select></p><div id="wizardMapFields"><label>Име от каталога <select id="wizardTarget">'+options+'</select></label></div><div id="wizardNewFields" class="hidden"><label>Стандартно име <input id="wizardNewName" placeholder="Име на новия показател"></label><label>Категория <input id="wizardNewCategory" placeholder="Категория"></label><label>Единица <input id="wizardNewUnit" placeholder="Единица"></label></div><p id="wizardWarning"></p>';
  document.getElementById('wizardMode').value=choice.mode;
- const warn=()=>{const mode=document.getElementById('wizardMode').value,c=canonicalConcepts[+document.getElementById('wizardTarget').value];document.getElementById('wizardTarget').disabled=mode==='keep';document.getElementById('wizardWarning').textContent=mode==='keep'?'Резултатите ще се импортират с името от изследването като отделен несъпоставен ред. Нищо няма да бъде изтрито. Можеш да ги съпоставиш при следващ импорт.':!wizardUnitsCompatible(r[2],c[2])?'Мерните единици са различни — съпоставянето ще бъде блокирано.':'Провери вида на пробата и условията на измерване.'};
+ document.getElementById('wizardTarget').value=choice.target>=0?String(choice.target):'';
+ document.getElementById('wizardNewName').value=choice.newName||r[1];
+ document.getElementById('wizardNewCategory').value=choice.newCategory||r[0];
+ document.getElementById('wizardNewUnit').value=choice.newUnit??r[2];
+ const warn=()=>{const mode=document.getElementById('wizardMode').value,t=document.getElementById('wizardTarget').value,c=t===''?null:canonicalConcepts[+t];document.getElementById('wizardMapFields').classList.toggle('hidden',mode!=='map');document.getElementById('wizardNewFields').classList.toggle('hidden',mode!=='new');document.getElementById('wizardWarning').textContent=mode==='keep'?'Оригиналното име и резултатите се запазват.':mode==='new'?'Новият показател ще бъде добавен в локалния каталог след окончателното потвърждение.':'Избери съответствие и провери вида на пробата и единиците.'+(c&&!wizardUnitsCompatible(r[2],c[2])?' Несъвместими единици.':'')};
  document.getElementById('wizardMode').onchange=warn;document.getElementById('wizardTarget').onchange=warn;warn();
- document.getElementById('wizardBack').disabled=!w.pending||w.pending.indexOf(w.index)===0;
- document.getElementById('wizardNext').textContent=w.pending&&w.pending.indexOf(w.index)===w.pending.length-1?'Преглед и запис':'Запази и продължи';
+ document.getElementById('wizardBack').disabled=w.pending.indexOf(w.index)===0;
+ document.getElementById('wizardNext').textContent=w.pending.indexOf(w.index)===w.pending.length-1?'Преглед и запис':'Запази и продължи';
  document.getElementById('wizardError').textContent='';
 }
 function wizardSaveChoice(){
- const w=wizardState,r=w.data.custom[w.index],mode=document.getElementById('wizardMode').value,target=+document.getElementById('wizardTarget').value;
- if(mode==='map'&&!wizardUnitsCompatible(r[2],canonicalConcepts[target][2])){document.getElementById('wizardError').textContent='Несъвместими мерни единици. Избери друго име или остави несъпоставен.';return false}
- w.choices[w.index]={mode,target};return true;
+ const w=wizardState,r=w.data.custom[w.index],mode=document.getElementById('wizardMode').value,raw=document.getElementById('wizardTarget').value,target=raw===''?-1:Number(raw);
+ const error=document.getElementById('wizardError');error.textContent='';
+ if(mode==='map'&&(target<0||!canonicalConcepts[target]||!wizardUnitsCompatible(r[2],canonicalConcepts[target][2]))){error.textContent='Избери правилен показател със съвместими единици.';return false}
+ const newName=document.getElementById('wizardNewName').value.trim(),newCategory=document.getElementById('wizardNewCategory').value.trim(),newUnit=document.getElementById('wizardNewUnit').value.trim();
+ if(mode==='new'&&(!newName||!newCategory)){error.textContent='Попълни име и категория.';return false}
+ if(mode==='new'&&canonicalConcepts.some(c=>normalizedName(c[1])===normalizedName(newName))){error.textContent='Това име вече съществува в каталога. Използвай съпоставяне.';return false}
+ w.choices[w.index]={mode,target,newName,newCategory,newUnit,sourceName:r[1]};return true;
 }
 document.getElementById('wizardCancel').onclick=()=>{wizardState=null;document.getElementById('catalogWizard').classList.add('hidden')};
 document.getElementById('wizardBack').onclick=()=>{const w=wizardState;if(!w||!w.pending.length)return;if(wizardSaveChoice()){const pos=w.pending.indexOf(w.index);if(pos>0){w.index=w.pending[pos-1];wizardRender()}}};
