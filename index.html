@@ -235,6 +235,18 @@ function openUnmatched(){
  document.getElementById('unmatchedApply').disabled=true;
  if(ids.length)selectUnmatched(ids[0]);
 }
+
+document.getElementById('exportUnmatched').onclick=()=>{
+ const rows=labs.filter(r=>!resolveConcept(r[1],r[2])).map(r=>({
+  name:r[1],unit:r[2],category:r[0],
+  referenceRanges:[...new Map(dates.map(d=>refs[r[1]+'|'+d]).filter(Boolean).map(ref=>[JSON.stringify(ref),ref])).values()]
+ }));
+ const payload={format:'myhealth-unmatched-terms-v1',version:'v0.72',count:rows.length,indicators:rows};
+ const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'});
+ const url=URL.createObjectURL(blob),link=document.createElement('a');
+ link.href=url;link.download='myhealth-unmatched-indicators.json';document.body.appendChild(link);link.click();link.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
 function selectUnmatched(i){
  unmatchedIndex=i;
  const r=labs[i],host=document.getElementById('unmatchedDetails');if(!r||!host)return;
