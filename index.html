@@ -183,7 +183,7 @@ function resolveConcept(name,unit){
  if(matches.length!==1)return null;
  const r=matches[0],targetUnit=normalizedUnit(r[2]);
  // Different measurement units must not be silently treated as interchangeable.
- const compatible=!u||u===targetUnit||(r[1]==='Helicobacter pylori IgG'&&!targetUnit)||(targetUnit==='10⁹/l'&&['g/l','109/l','10⁹/l'].includes(u))||(targetUnit==='10¹²/l'&&['t/l','1012/l','10¹²/l'].includes(u))||(targetUnit==='uiu/ml'&&u==='miu/l');
+ const compatible=!u||u===targetUnit||(r[1]==='Helicobacter pylori IgG'&&!targetUnit)||(r[1]==='Феритин'&&u==='ng/ml'&&targetUnit==='ug/l')||(targetUnit==='10⁹/l'&&['g/l','109/l','10⁹/l'].includes(u))||(targetUnit==='10¹²/l'&&['t/l','1012/l','10¹²/l'].includes(u))||(targetUnit==='uiu/ml'&&u==='miu/l');
  return compatible?{category:r[0],name:r[1],unit:r[2]}:null;
 }
 function key(i,d){return labs[i][1]+'|'+d}
@@ -288,7 +288,7 @@ function wizardCommit(){
   document.getElementById('wizardError').textContent='Неуспешен запис: '+err.message+'. Презареди страницата за възстановяване от локалните данни.';
  }
 }
-function wizardUnitsCompatible(source,target){const a=normalizedUnit(source),b=normalizedUnit(target);return !a||a===b||(!b&&a==='u/ml')||(b==='10⁹/l'&&['g/l','109/l','10⁹/l'].includes(a))||(b==='10¹²/l'&&['t/l','1012/l','10¹²/l'].includes(a))||(b==='uiu/ml'&&a==='miu/l')}
+function wizardUnitsCompatible(source,target){const a=normalizedUnit(source),b=normalizedUnit(target);return !a||a===b||(!b&&a==='u/ml')||(a==='ng/ml'&&b==='ug/l')||(b==='10⁹/l'&&['g/l','109/l','10⁹/l'].includes(a))||(b==='10¹²/l'&&['t/l','1012/l','10¹²/l'].includes(a))||(b==='uiu/ml'&&a==='miu/l')}
 
 let unmatchedIndex=-1;
 function openUnmatched(){
@@ -339,7 +339,7 @@ document.getElementById('unmatchedApply').onclick=()=>{
   dates.forEach((d,j)=>{if(filled(r[3][j])){dest[3][j]=r[3][j];if(refs[oldName+'|'+d]&&!refs[dest[1]+'|'+d])refs[dest[1]+'|'+d]=refs[oldName+'|'+d]}});
   labs.splice(i,1);
  }else{
-  r[0]=c[0];r[1]=c[1];r[2]=c[2];
+  r[0]=c[0];r[1]=c[1];r[2]=c[2]||r[2];
   dates.forEach(d=>{if(refs[oldName+'|'+d])refs[c[1]+'|'+d]=refs[oldName+'|'+d]});
  }
  custom=labs.map(x=>x.slice(0,3));selected=[];visibleGraphs.clear();
