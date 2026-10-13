@@ -178,6 +178,30 @@ document.getElementById('privateInput').onchange=async e=>{
  }catch(err){alert('Неуспешно прочитане: '+err.message)}
  finally{e.target.value=''}
 };
+
+function wizardRender(){
+ const w=wizardState;if(!w)return;
+ const r=w.data.custom[w.index],values=w.data.values[w.index],choice=w.choices[w.index];
+ const proposal=resolveConcept(r[1],r[2]);
+ document.getElementById('wizardCount').textContent='Показател '+(w.index+1)+' от '+w.data.custom.length+' — промени не се записват до окончателното потвърждение.';
+ const options=canonicalConcepts.map((c,i)=>'<option value="'+i+'" '+(i===choice.target?'selected':'')+'>'+safeText(c[1])+' ('+safeText(c[2])+')</option>').join('');
+ const records=w.data.dates.map((d,i)=>({d,v:values[i],ref:w.data.refs?.[r[1]+'|'+d]})).filter(x=>x.v!==null&&x.v!==undefined&&x.v!=='');
+ document.getElementById('wizardBody').innerHTML='<p><b>Оригинално име:</b> '+safeText(r[1])+' · <b>Единица:</b> '+safeText(r[2]||'непосочена')+'</p><p><b>Предложение:</b> '+safeText(proposal?.name||'Няма сигурно съответствие')+'</p><div style="max-height:250px;overflow:auto"><table style="width:100%"><tr><th>Дата</th><th>Стойност</th><th>Референция от изследването</th></tr>'+records.map(x=>'<tr><td>'+safeText(x.d)+'</td><td>'+safeText(x.v)+'</td><td>'+safeText(x.ref?(x.ref.lo??'—')+' – '+(x.ref.hi??'—'):'Няма данни')+'</td></tr>').join('')+'</table></div><p class="muted">Каталогът няма универсални референтни граници. Оригиналните се запазват за всяка дата.</p><label>Действие <select id="wizardMode"><option value="map">Съпостави</option><option value="keep">Остави несъпоставен</option></select></label><label> Име от каталога <select id="wizardTarget">'+options+'</select></label><p id="wizardWarning" style="color:#a65b00"></p>';
+ document.getElementById('wizardMode').value=choice.mode;
+ const warn=()=>{const mode=document.getElementById('wizardMode').value,c=canonicalConcepts[+document.getElementById('wizardTarget').value];document.getElementById('wizardTarget').disabled=mode==='keep';document.getElementById('wizardWarning').textContent=mode==='keep'?'Оригиналното име се запазва за по-късна проверка.':normalizedUnit(r[2])!==normalizedUnit(c[2])?'Мерните единици са различни — съпоставянето ще бъде блокирано.':'Провери вида на пробата и условията на измерване.'};
+ document.getElementById('wizardMode').onchange=warn;document.getElementById('wizardTarget').onchange=warn;warn();
+ document.getElementById('wizardBack').disabled=w.index===0;
+ document.getElementById('wizardNext').textContent=w.index===w.data.custom.length-1?'Преглед и запис':'Запази и продължи';
+ document.getElementById('wizardError').textContent='';
+}
+function wizardSaveChoice(){
+ const w=wizardState,r=w.data.custom[w.index],mode=document.getElementById('wizardMode').value,target=+document.getElementById('wizardTarget').value;
+ if(mode==='map'&&normalizedUnit(r[2])!==normalizedUnit(canonicalConcepts[target][2])){document.getElementById('wizardError').textContent='Несъвместими мерни единици. Избери друго име или остави несъпоставен.';return false}
+ w.choices[w.index]={mode,target};return true;
+}
+document.getElementById('wizardCancel').onclick=()=>{wizardState=null;document.getElementById('catalogWizard').classList.add('hidden')};
+document.getElementById('wizardBack').onclick=()=>{if(wizardSaveChoice()){wizardState.index--;wizardRender()}};
+document.getElementById('wizardNext').onclick=()=>{if(!wizardSaveChoice())return;if(wizardState.index<wizardState.data.custom.length-1){wizardState.index++;wizardRender()}else wizardCommit()};
 const bloodLabels={"WBC":"Левкоцити – бр.","LY%":"Лимфоцити (%)","MO%":"Моноцити (%)","EOS%":"Еозинофили (%)","BASO%":"Базофили (%)","NEU%":"Неутрофили (%)","LY#":"Лимфоцити – бр.","MO#":"Моноцити – бр.","EOS#":"Еозинофили – бр.","BASO#":"Базофили – бр.","NEU#":"Неутрофили – бр.","RBC":"Еритроцити – бр.","HGB":"Хемоглобин","HCT":"Хематокрит","MCV":"Среден обем на еритроцита","MCH":"Средно съдържание на хемоглобин в еритроцита","MCHC":"Средна концентрация на хемоглобин в еритроцитите","RDW":"Вариация на еритроцитите","PLT":"Тромбоцити","MPV":"Среден обем на тромбоцита","PCT":"Тромбокрит","PDW":"Ширина на разпределението на тромбоцитите"};
 function bloodLabel(n){const k=n.trim().toUpperCase();return bloodLabels[k]||bloodLabels[({"LY%":"LY%","MON%":"MO%","EO%":"EOS%","BA%":"BASO%","NEUT%":"NEU%","LY#":"LY#","MON#":"MO#","EO#":"EOS#","BA#":"BASO#","NEU#":"NEU#","PLT":"PLT","HGB":"HGB","HCT":"HCT","PCT":"PCT"}[k])]||null}
 
