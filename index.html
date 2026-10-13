@@ -171,6 +171,7 @@ function bloodLabel(n){const k=n.trim().toUpperCase();return bloodLabels[k]||blo
 
 function canonicalDisplay(r){
  const raw=normalizedName(r[1]);
+ if(/random|nonpregnant|fasting|ogtt|postprandial|на гладно/.test(raw))return null;
  const tokens=raw.replace(/[()]/g,' ').trim();
  const known={
   'baso#':'Базофили (абс.)','ba#':'Базофили (абс.)','baso%':'Базофили (%)','ba%':'Базофили (%)',
@@ -178,7 +179,7 @@ function canonicalDisplay(r){
   'lym#':'Лимфоцити (абс.)','ly#':'Лимфоцити (абс.)','lym%':'Лимфоцити (%)','ly%':'Лимфоцити (%)',
   'neut#':'Неутрофили (абс.)','neu#':'Неутрофили (абс.)','neut%':'Неутрофили (%)','neu%':'Неутрофили (%)',
   'hgb':'Хемоглобин','hct':'Хематокрит','plt':'Тромбоцити',
-  'глюкоза/glucose':'Глюкоза','глюкоза/glucose random nonpregnant':'Глюкоза',
+  'глюкоза/glucose':'Глюкоза',
   'общ билирубин':'Общ билирубин','билирубин общ':'Общ билирубин'
  };
  const match=Object.entries(known).find(([alias])=>raw===alias||raw.startsWith(alias+' (')||raw.startsWith(alias+'('));
