@@ -428,6 +428,43 @@ document.getElementById('qualSave').onclick=()=>{
  persist();render();document.getElementById('qualForm').classList.add('hidden');
 };
 
+
+function mergePair(k){
+ const pair=window.mergeCandidates?.[k];if(!pair)return;
+ const first=labs[pair.a],second=labs[pair.b];
+ if(!first||!second||pair.a===pair.b)return;
+ const filled=v=>v!==null&&v!==undefined&&v!=='';
+ if(first[2]&&second[2]&&normalizedUnit(first[2])!==normalizedUnit(second[2])){alert('Мерните единици не съвпадат.');return}
+ if(dates.some((d,j)=>filled(first[3][j])&&filled(second[3][j]))){alert('Има конфликтни резултати за една дата.');return}
+ if(!confirm('Да обединя '+second[1]+' към '+first[1]+'? Ще се създаде резервно копие.'))return;
+ const oldData=localStorage.getItem(activeDossierKey);
+ try{
+  if(oldData!==null)localStorage.setItem(activeDossierKey+'_merge_backup_'+Date.now(),oldData);
+ }catch(err){alert('Не може да се създаде резервно копие. Обединяването е отменено.');return}
+ const oldState={labs:labs.map(r=>[r[0],r[1],r[2],[...r[3]]]),custom:custom.map(r=>[...r]),refs:JSON.parse(JSON.stringify(refs)),selected:[...selected],graphs:[...visibleGraphs]};
+ try{
+  for(let j=0;j<dates.length;j++){
+   if(!filled(first[3][j])&&filled(second[3][j]))first[3][j]=second[3][j];
+   if(first[1]!==second[1]){
+    const from=second[1]+'|'+dates[j],to=first[1]+'|'+dates[j];
+    if(refs[from]&&!refs[to])refs[to]=refs[from];
+    delete refs[from];
+   }
+  }
+  labs.splice(pair.b,1);
+  custom=labs.map(r=>r.slice(0,3));
+  const adjust=i=>i>pair.b?i-1:i;
+  selected=selected.filter(i=>i!==pair.b).map(adjust);
+  const graphIndices=[...visibleGraphs];visibleGraphs.clear();
+  graphIndices.filter(i=>i!==pair.b).forEach(i=>visibleGraphs.add(adjust(i)));
+  persist();updateCategories();header();render();renderGraphs();auditIndicators();
+ }catch(err){
+  labs.splice(0,labs.length,...oldState.labs);custom=oldState.custom;refs=oldState.refs;selected=oldState.selected;
+  visibleGraphs.clear();oldState.graphs.forEach(i=>visibleGraphs.add(i));
+  if(oldData!==null)localStorage.setItem(activeDossierKey,oldData);
+  alert('Обединяването не е завършено: '+err.message);
+ }
+}
 function previewMerge(k){
  const pair=window.mergeCandidates?.[k];if(!pair)return;
  const first=labs[pair.a],second=labs[pair.b];
