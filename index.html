@@ -60,8 +60,8 @@ const canonicalConcepts=[
 ['Кръвна картина','Хематокрит','%',['hct','hematocrit','хематокрит']],
 ['Кръвна картина','Тромбоцити','10⁹/L',['plt','тромбоцити','platelets']],
 ['Кръвна картина','MCV','fL',['mcv']],
-['Кръвна картина','MCH','pg',['mch']],
-['Кръвна картина','MCHC','g/L',['mchc']],
+['Кръвна картина','MCH','pg',['mch','ср. hgb. конц. в ер.']],
+['Кръвна картина','MCHC','g/L',['mchc','ср. hgb. съдърж. в еритр.']],
 ['Кръвна картина','RDW','%',['rdw']],
 ['Кръвна картина','MPV','fL',['mpv']],
 ['Кръвна картина','Неутрофили (%)','%',['neut%','neu%','неутрофили %','неутрофилни гранулоцити %']],
@@ -129,6 +129,31 @@ const canonicalConcepts=[
 ['Урина','Урина седимент левкоцити','uL',['урина седимент левкоцити']],
 ['Урина','Урина седимент еритроцити','uL',['урина седимент еритроцити']],
 ['Урина','Урина седимент епителни клетки','uL',['урина седимент епителни клетки']],
+["Урина","Бактерии (уринен седимент)","",["бактерии/bacteria"]],
+["Урина","Гранулирани цилиндри (урина)","",["гранулирани ц илинд ри/granular casts"]],
+["Урина","Дрожди (уринен седимент)","",["дрожд и/yeasts"]],
+["Урина","Хиалинни цилиндри (урина)","",["хиалинни ц илинд ри/hyaline casts"]],
+["Урина","Калциево-оксалатни кристали (урина)","",["кристали - калц иев оксалат/c alcium","кристали калц иев оксалат/c alcium"]],
+["Урина","Плоски епителни клетки (урина)","",["плоски епителни клетки/squamous"]],
+["Урина","Неплоски епителни клетки (урина)","",["неплоски епителни клетки/non-"]],
+["Урина","Урина WBC clumps","uL",["урина wbc clumps"]],
+["Урина","Урина small round cell","",["урина small round cell"]],
+["Урина","Урина unclassified cast","uL",["урина unclassified cast"]],
+["Урина","Урина AcaRBC","%",["урина acarbc"]],
+["Урина","Урина GhoRBC","%",["урина ghorbc"]],
+["Урина","Урина SphRBC","%",["урина sphrbc"]],
+["Урина","Урина UncRBC","%",["урина uncrbc"]],
+["Урина","Урина crystal","uL",["урина crystal"]],
+["Урина","Урина дрожди","uL",["урина дрожди"]],
+["Урина","Урина пойкилоцити","%",["урина пойкилоцити"]],
+["Кръвна картина","Пръчкоядрени неутрофили (дял)","",["пръ чкояд рени неутрофилни"]],
+["Кръвна картина","Сегментоядрени неутрофили (дял)","",["с егментояд рени неутрофилни"]],
+["Кръвна картина","Еозинофилни гранулоцити (дял)","",["еозинофилни гранулоц ити/еo"]],
+["Кръвна картина","Базофилни гранулоцити (дял)","",["базофилни гранулоц ити/baso"]],
+["Кръвна картина","Лимфоцити (дял)","",["лимфоц ити/lym"]],
+["Кръвна картина","Моноцити (дял)","",["моноц ити/mo"]],
+["Кръвосъсирване","Време на кървене","index",["време на кървене"]],
+["Кръвосъсирване","Време на съсирване","index",["време на съсирване"]],
 ['Възпаление','CRP','mg/L',['crp','c-реактивен протеин']],
 ['Възпаление','СУЕ','mm/h',['суе','esr']],
 ['Железен статус','Феритин','µg/L',['феритин','ferritin']],
@@ -158,7 +183,7 @@ function resolveConcept(name,unit){
  if(matches.length!==1)return null;
  const r=matches[0],targetUnit=normalizedUnit(r[2]);
  // Different measurement units must not be silently treated as interchangeable.
- const compatible=!u||u===targetUnit||(targetUnit==='10⁹/l'&&['g/l','109/l','10⁹/l'].includes(u))||(targetUnit==='10¹²/l'&&['t/l','1012/l','10¹²/l'].includes(u))||(targetUnit==='uiu/ml'&&u==='miu/l');
+ const compatible=!u||u===targetUnit||(r[1]==='Helicobacter pylori IgG'&&!targetUnit)||(targetUnit==='10⁹/l'&&['g/l','109/l','10⁹/l'].includes(u))||(targetUnit==='10¹²/l'&&['t/l','1012/l','10¹²/l'].includes(u))||(targetUnit==='uiu/ml'&&u==='miu/l');
  return compatible?{category:r[0],name:r[1],unit:r[2]}:null;
 }
 function key(i,d){return labs[i][1]+'|'+d}
@@ -263,7 +288,7 @@ function wizardCommit(){
   document.getElementById('wizardError').textContent='Неуспешен запис: '+err.message+'. Презареди страницата за възстановяване от локалните данни.';
  }
 }
-function wizardUnitsCompatible(source,target){const a=normalizedUnit(source),b=normalizedUnit(target);return !a||a===b||(b==='10⁹/l'&&['g/l','109/l','10⁹/l'].includes(a))||(b==='10¹²/l'&&['t/l','1012/l','10¹²/l'].includes(a))||(b==='uiu/ml'&&a==='miu/l')}
+function wizardUnitsCompatible(source,target){const a=normalizedUnit(source),b=normalizedUnit(target);return !a||a===b||(!b&&a==='u/ml')||(b==='10⁹/l'&&['g/l','109/l','10⁹/l'].includes(a))||(b==='10¹²/l'&&['t/l','1012/l','10¹²/l'].includes(a))||(b==='uiu/ml'&&a==='miu/l')}
 
 let unmatchedIndex=-1;
 function openUnmatched(){
