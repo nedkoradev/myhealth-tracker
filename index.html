@@ -179,6 +179,47 @@ document.getElementById('privateInput').onchange=async e=>{
  finally{e.target.value=''}
 };
 
+
+function wizardCommit(){
+ const w=wizardState,d=w.data,groups=new Map(),conflicts=[],nextRefs={},originals=[];
+ const filled=v=>v!==null&&v!==undefined&&v!=='';
+ d.custom.forEach((r,i)=>{
+  const choice=w.choices[i],c=choice.mode==='map'?canonicalConcepts[choice.target]:null;
+  const name=c?c[1]:r[1],unit=c?c[2]:r[2],category=c?c[0]:r[0],id=name+'|'+normalizedUnit(unit);
+  if(!groups.has(id))groups.set(id,{category,name,unit,values:Array(d.dates.length).fill(null)});
+  const g=groups.get(id);
+  d.values[i].forEach((v,j)=>{
+   if(!filled(v))return;
+   if(filled(g.values[j])){conflicts.push(name+' / '+d.dates[j]);return}
+   g.values[j]=v;
+   const ref=d.refs?.[r[1]+'|'+d.dates[j]],refKey=name+'|'+d.dates[j];
+   if(ref)nextRefs[refKey]=ref;
+   originals.push({original:r[1],standard:name,date:d.dates[j],unit:r[2]});
+  });
+ });
+ if(conflicts.length){document.getElementById('wizardError').textContent='Има по два резултата за една дата: '+conflicts.slice(0,6).join(', ')+'. Върни се и остави единия показател несъпоставен.';return}
+ if(!confirm('Да заредя '+groups.size+' показателя в активното досие? Ще бъде направено локално резервно копие.'))return;
+ const previous=localStorage.getItem(activeDossierKey);
+ try{
+  if(previous!==null)localStorage.setItem(activeDossierKey+'_backup_before_import_'+Date.now(),previous);
+  const rows=[...groups.values()];
+  const q=Array.isArray(d.qualitative)?d.qualitative.filter(r=>r&&typeof r.date==='string'&&typeof r.indicator==='string'&&typeof r.result==='string'):[];
+  const allDates=[...new Set([...d.dates,...q.map(r=>r.date)])];
+  const order=allDates.map((date,i)=>({date,i})).sort((a,b)=>b.date.localeCompare(a.date));
+  const oldPositions=new Map(d.dates.map((date,i)=>[date,i]));
+  const nextLabs=rows.map(r=>[r.category,r.name,r.unit,order.map(o=>oldPositions.has(o.date)?r.values[oldPositions.get(o.date)]:null)]);
+  dates=order.map(o=>o.date);labNames=d.labNames||{};labs.splice(0,labs.length,...nextLabs);
+  custom=nextLabs.map(r=>r.slice(0,3));refs=nextRefs;qualitative=q;selected=[];visibleGraphs.clear();
+  persist();
+  localStorage.setItem(activeDossierKey+'_original_name_mapping',JSON.stringify(originals));
+  updateCategories();header();render();renderGraphs();closeEditor();
+  wizardState=null;document.getElementById('catalogWizard').classList.add('hidden');
+  document.getElementById('importStatus').textContent='Импортирани '+rows.length+' показателя. Оригиналните имена и лабораторните референции са запазени локално.';
+ }catch(err){
+  if(previous!==null)localStorage.setItem(activeDossierKey,previous);
+  document.getElementById('wizardError').textContent='Неуспешен запис: '+err.message+'. Презареди страницата за възстановяване от локалните данни.';
+ }
+}
 function wizardRender(){
  const w=wizardState;if(!w)return;
  const r=w.data.custom[w.index],values=w.data.values[w.index],choice=w.choices[w.index];
