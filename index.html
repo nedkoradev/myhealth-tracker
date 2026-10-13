@@ -245,6 +245,28 @@ function selectUnmatched(i){
  const check=()=>{const c=canonicalConcepts[+document.getElementById('unmatchedTarget').value],ok=wizardUnitsCompatible(r[2],c[2]);document.getElementById('unmatchedWarning').textContent=ok?'Провери метода и вида на пробата.':'Несъвместими единици: '+r[2]+' / '+c[2];document.getElementById('unmatchedApply').disabled=!ok};
  document.getElementById('unmatchedTarget').onchange=check;check();document.getElementById('unmatchedError').textContent='';
 }
+
+document.getElementById('unmatchedApply').onclick=()=>{
+ const i=unmatchedIndex,r=labs[i],c=canonicalConcepts[+document.getElementById('unmatchedTarget').value];if(!r||!c)return;
+ if(!wizardUnitsCompatible(r[2],c[2])){alert('Несъвместими единици');return}
+ const other=labs.findIndex((x,j)=>j!==i&&normalizedName(x[1])===normalizedName(c[1]));
+ const filled=v=>v!==null&&v!==undefined&&v!=='';
+ if(other>=0&&dates.some((d,j)=>filled(r[3][j])&&filled(labs[other][3][j]))){document.getElementById('unmatchedError').textContent='Два резултата на една дата. Нищо не е променено.';return}
+ if(!confirm('Съпостави '+r[1]+' към '+c[1]+'?'))return;
+ const snapshot=localStorage.getItem(activeDossierKey);
+ try{if(snapshot!==null)localStorage.setItem(activeDossierKey+'_before_mapping_'+Date.now(),snapshot)}catch(e){alert('Неуспешно резервно копие.');return}
+ const oldName=r[1];
+ if(other>=0){
+  const dest=labs[other];
+  dates.forEach((d,j)=>{if(filled(r[3][j])){dest[3][j]=r[3][j];if(refs[oldName+'|'+d]&&!refs[dest[1]+'|'+d])refs[dest[1]+'|'+d]=refs[oldName+'|'+d]}});
+  labs.splice(i,1);
+ }else{
+  r[0]=c[0];r[1]=c[1];r[2]=c[2];
+  dates.forEach(d=>{if(refs[oldName+'|'+d])refs[c[1]+'|'+d]=refs[oldName+'|'+d]});
+ }
+ custom=labs.map(x=>x.slice(0,3));selected=[];visibleGraphs.clear();
+ persist();updateCategories();header();render();renderGraphs();openUnmatched();
+};
 function wizardRender(){
  const w=wizardState;if(!w)return;
  const r=w.data.custom[w.index],values=w.data.values[w.index],choice=w.choices[w.index];
