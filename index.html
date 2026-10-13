@@ -144,7 +144,7 @@ const canonicalConcepts=[
 ];
 const catalog=canonicalConcepts.map(r=>r.slice(0,3));
 const normalizedName=n=>String(n||'').normalize('NFKC').toLocaleLowerCase('bg').replace(/[‐‑–—]/g,'-').replace(/\s+/g,' ').trim();
-const normalizedUnit=u=>String(u||'').toLowerCase().replace(/[µμ]/g,'u').replace(/\s+/g,'').replace(/\^/g,'').replace(/литър/g,'l');
+const normalizedUnit=u=>String(u||'').toLowerCase().replace(/[µμ]/g,'u').replace(/\s+/g,'').replace(/\^/g,'').replace(/литър/g,'l').replace(/^x?10e?9\/l$/,'10⁹/l').replace(/^x?109\/l$/,'10⁹/l').replace(/^x?10e?12\/l$/,'10¹²/l').replace(/^x?1012\/l$/,'10¹²/l');
 function resolveConcept(name,unit){
  const n=normalizedName(name),u=normalizedUnit(unit);
  let matches=canonicalConcepts.filter(r=>[r[1],...r[3]].some(x=>normalizedName(x)===n));
