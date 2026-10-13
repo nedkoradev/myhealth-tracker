@@ -166,21 +166,17 @@ refSheet.autoFilter={from:'A1',to:'D'+Math.max(2,refSheet.rowCount)};refSheet.ge
 const bytes=await wb.xlsx.writeBuffer(),blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='myhealth-results-'+new Date().toISOString().slice(0,10)+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)
 }catch(err){alert('Неуспешен Excel експорт: '+err.message)}};document.getElementById('importPrivate').insertAdjacentElement('afterend',xlsxBtn);
 document.getElementById('importPrivate').onclick=()=>document.getElementById('privateInput').click();
+let wizardState=null;
 document.getElementById('privateInput').onchange=async e=>{
  const file=e.target.files?.[0];if(!file)return;
  try{
-  const data=JSON.parse(await file.text());
-  if(data.format!=='myhealth-tracker-private-import-v1'||!Array.isArray(data.dates)||!Array.isArray(data.custom)||!Array.isArray(data.values)||data.custom.length!==data.values.length||data.dates.some(d=>!/^\d{4}-\d{2}-\d{2}$/.test(d))||data.custom.some(r=>!Array.isArray(r)||r.length!==3)||data.values.some(row=>!Array.isArray(row)||row.length!==data.dates.length))throw Error('Невалиден формат на файла.');
-  if(!confirm('Това ще замени текущото активно досие. Преди това направи експорт на резервно копие. Продължи?'))return;const existingSnapshot=localStorage.getItem(activeDossierKey);if(existingSnapshot){const backupKey=activeDossierKey+'_backup_before_import_'+Date.now();localStorage.setItem(backupKey,existingSnapshot)}
-  dates=data.dates;
-  const incoming=data.custom.map(r=>r.slice()),newRefs={...(data.refs||{})},taken=new Set();
-  for(const r of incoming){const original=r[1],concept=resolveConcept(r[1],r[2]);if(!concept||taken.has(concept.name)){taken.add(original);continue}
-   r[0]=concept.category;r[1]=concept.name;r[2]=concept.unit;taken.add(r[1]);
-   if(original!==r[1])for(const d of dates){const oldKey=original+'|'+d,newKey=r[1]+'|'+d;if(Object.prototype.hasOwnProperty.call(newRefs,oldKey)&&!Object.prototype.hasOwnProperty.call(newRefs,newKey)){newRefs[newKey]=newRefs[oldKey];delete newRefs[oldKey]}}
-  }
-  labs.splice(0,labs.length,...incoming.map((r,i)=>[r[0],r[1],r[2],data.values[i]]));custom=incoming;refs=newRefs;labNames=data.labNames||{};qualitative=Array.isArray(data.qualitative)?data.qualitative.filter(r=>r&&typeof r.date==="string"&&typeof r.indicator==="string"&&typeof r.result==="string"):[];for(const r of qualitative){if(!dates.includes(r.date)){dates.push(r.date);labs.forEach(x=>x[3].push(null))}}const order=dates.map((d,i)=>({d,i})).sort((a,b)=>b.d.localeCompare(a.d));dates=order.map(x=>x.d);labs.forEach(r=>r[3]=order.map(x=>r[3][x.i]));visibleGraphs.clear();persist();updateCategories();header();render();renderGraphs();closeEditor();
-  alert('Заредени са '+data.dates.length+' дати и '+data.custom.length+' вида показатели. Предишните тестови данни са заменени.');
- }catch(err){alert('Неуспешен импорт: '+err.message)}finally{e.target.value=''}
+  const d=JSON.parse(await file.text());
+  if(d.format!=='myhealth-tracker-private-import-v1'||!Array.isArray(d.dates)||!Array.isArray(d.custom)||!Array.isArray(d.values)||d.custom.length!==d.values.length||d.custom.some(r=>!Array.isArray(r)||r.length!==3)||d.values.some(r=>!Array.isArray(r)||r.length!==d.dates.length)||d.dates.some(x=>!/^\\d{4}-\\d{2}-\\d{2}$/.test(x)))throw Error('Невалиден JSON архив');
+  if(!d.custom.length){alert('Архивът няма числови показатели.');return}
+  wizardState={data:d,index:0,choices:d.custom.map(r=>{const c=resolveConcept(r[1],r[2]),i=c?canonicalConcepts.findIndex(x=>x[1]===c.name):-1;return {mode:i<0?'keep':'map',target:Math.max(0,i)}})};
+  document.getElementById('catalogWizard').classList.remove('hidden');wizardRender();
+ }catch(err){alert('Неуспешно прочитане: '+err.message)}
+ finally{e.target.value=''}
 };
 const bloodLabels={"WBC":"Левкоцити – бр.","LY%":"Лимфоцити (%)","MO%":"Моноцити (%)","EOS%":"Еозинофили (%)","BASO%":"Базофили (%)","NEU%":"Неутрофили (%)","LY#":"Лимфоцити – бр.","MO#":"Моноцити – бр.","EOS#":"Еозинофили – бр.","BASO#":"Базофили – бр.","NEU#":"Неутрофили – бр.","RBC":"Еритроцити – бр.","HGB":"Хемоглобин","HCT":"Хематокрит","MCV":"Среден обем на еритроцита","MCH":"Средно съдържание на хемоглобин в еритроцита","MCHC":"Средна концентрация на хемоглобин в еритроцитите","RDW":"Вариация на еритроцитите","PLT":"Тромбоцити","MPV":"Среден обем на тромбоцита","PCT":"Тромбокрит","PDW":"Ширина на разпределението на тромбоцитите"};
 function bloodLabel(n){const k=n.trim().toUpperCase();return bloodLabels[k]||bloodLabels[({"LY%":"LY%","MON%":"MO%","EO%":"EOS%","BA%":"BASO%","NEUT%":"NEU%","LY#":"LY#","MON#":"MO#","EO#":"EOS#","BA#":"BASO#","NEU#":"NEU#","PLT":"PLT","HGB":"HGB","HCT":"HCT","PCT":"PCT"}[k])]||null}
